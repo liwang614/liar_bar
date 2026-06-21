@@ -104,8 +104,8 @@ export default function Game() {
       <div className="fixed inset-0 -z-10 pointer-events-none bg-[radial-gradient(circle_at_20%_8%,rgba(255,184,77,0.2),transparent_32%),radial-gradient(circle_at_80%_18%,rgba(143,66,38,0.22),transparent_36%),linear-gradient(135deg,#2b1712_0%,#1d1410_38%,#0e1f20_74%,#241710_100%)]" />
       <div className="fixed inset-0 -z-10 pointer-events-none opacity-25 bg-[linear-gradient(90deg,rgba(255,214,128,0.07)_1px,transparent_1px),linear-gradient(rgba(255,214,128,0.05)_1px,transparent_1px)] bg-[size:64px_64px]" />
 
-      {/* 牌桌：左右两列对手 + 中央信息 */}
-      <div className="flex flex-1">
+      {/* 牌桌：左右两列对手 + 中央信息（内容过高时本区域可滚动，底部操作栏保持固定） */}
+      <div className="flex flex-1 min-h-0 overflow-y-auto">
         <div className="flex flex-col gap-3 p-2 pt-3">
           {leftOpps.map((p) => (
             <OpponentChip key={p.uid} p={p} active={activeUid === p.uid} />

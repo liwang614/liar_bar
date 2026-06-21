@@ -78,7 +78,7 @@ export default function Home() {
   };
 
   return (
-    <div className="relative flex flex-1 flex-col items-center justify-center overflow-hidden px-4 py-8 text-amber-50">
+    <div className="relative flex flex-1 flex-col items-center overflow-y-auto px-4 py-8 text-amber-50">
       {/* 全屏背景层：用 fixed 脱离父级 max-w-md 限制，铺满视口 */}
       <div className="fixed inset-0 -z-10 pointer-events-none bg-[radial-gradient(circle_at_20%_8%,rgba(255,184,77,0.26),transparent_30%),radial-gradient(circle_at_80%_20%,rgba(143,66,38,0.24),transparent_34%),linear-gradient(135deg,#2b1712_0%,#221713_34%,#102324_72%,#2a1b13_100%)]" />
       <div className="fixed inset-0 -z-10 pointer-events-none opacity-35 bg-[linear-gradient(90deg,rgba(255,214,128,0.08)_1px,transparent_1px),linear-gradient(rgba(255,214,128,0.05)_1px,transparent_1px)] bg-[size:72px_72px]" />
@@ -106,7 +106,7 @@ export default function Home() {
         initial={{ opacity: 0, y: 26 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.55, ease: 'easeOut' }}
-        className="relative w-full max-w-[470px]"
+        className="relative my-auto w-full max-w-[470px]"
       >
         <header className="mb-7 text-center">
           <motion.div
