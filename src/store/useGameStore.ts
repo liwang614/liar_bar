@@ -95,9 +95,8 @@ export const useGameStore = create<GameStore>((set, get) => {
   const toLog = (events: EventEnvelope[]): EventLog[] =>
     events.map((e) => ({ id: String(e.seq), seq: e.seq, type: e.type, payload: e as Record<string, unknown> }));
 
-  // 提交一个快照到界面，并处理胜场累计。
+  // 提交一个快照到界面。胜场由服务器权威计数（按昵称持久化），客户端只采用服务器值。
   const commit = (snap: Snap) => {
-    const prevStatus = get().room?.status;
     set({
       room: snap.room,
       roomCode: snap.room.code,
@@ -105,11 +104,11 @@ export const useGameStore = create<GameStore>((set, get) => {
       events: toLog(snap.events),
       banner: null,
     });
-    if (snap.room.status === 'finished' && prevStatus !== 'finished' && snap.room.winnerUid === get().uid) {
-      const wins = get().wins + 1;
-      localStorage.setItem(WINS_KEY, String(wins));
-      set({ wins });
-      net.profile(wins);
+    // 采用服务器下发的本人胜场，让 localStorage 跟随权威值（也作为下次进房的迁移种子）。
+    const myServerWins = snap.room.players[get().uid]?.wins ?? 0;
+    if (myServerWins > get().wins) {
+      localStorage.setItem(WINS_KEY, String(myServerWins));
+      set({ wins: myServerWins });
     }
   };
 

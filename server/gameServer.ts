@@ -20,6 +20,7 @@ import type {
   RoomSummary,
   ServerMsg,
 } from '../src/net/protocol';
+import { WinStore } from './winStore';
 
 interface Member {
   nickname: string;
@@ -55,6 +56,9 @@ export class GameHub {
   private rooms = new Map<string, Room>();
   private sessions = new WeakMap<WebSocket, Session>();
   private allConns = new Set<WebSocket>(); // 全部活动连接，用于向大厅广播房间列表
+
+  // 按昵称持久化胜场。默认开 data/liarbar.db；测试可注入 :memory: 的 WinStore。
+  constructor(private winStore = new WinStore()) {}
 
   handle(ws: WebSocket): void {
     this.sessions.set(ws, {});
@@ -107,7 +111,9 @@ export class GameHub {
       code,
       hostUid: uid,
       status: 'lobby',
-      members: new Map([[uid, { nickname, avatar, ready: false, seat: 0, wins: wins ?? 0 }]]),
+      members: new Map([
+        [uid, { nickname, avatar, ready: false, seat: 0, wins: this.winStore.seed(nickname, wins ?? 0) }],
+      ]),
       order: [uid],
       state: null,
       events: [],
@@ -138,14 +144,20 @@ export class GameHub {
       if (room.status !== 'lobby') return this.send(ws, { t: 'error', msg: '对局已开始，无法加入' });
       if (room.members.size >= GAME_CONFIG.MAX_PLAYERS)
         return this.send(ws, { t: 'error', msg: '房间已满' });
-      room.members.set(uid, { nickname, avatar, ready: false, seat: room.order.length, wins: wins ?? 0 });
+      room.members.set(uid, {
+        nickname,
+        avatar,
+        ready: false,
+        seat: room.order.length,
+        wins: this.winStore.seed(nickname, wins ?? 0),
+      });
       room.order.push(uid);
     } else {
-      // 重连：更新资料，胜场取较大值，复用座位。
+      // 重连：更新资料，胜场以 DB（按昵称）为准并并入上报值，复用座位。
       const m = room.members.get(uid)!;
       m.nickname = nickname;
       m.avatar = avatar;
-      m.wins = Math.max(m.wins, wins ?? 0);
+      m.wins = this.winStore.seed(nickname, wins ?? 0);
     }
     room.conns.set(uid, ws);
     this.sessions.set(ws, { uid, code: room.code });
@@ -270,6 +282,9 @@ export class GameHub {
     if (res.state.status === 'finished') {
       room.status = 'finished';
       room.winnerUid = res.state.winnerUid;
+      // 服务器权威计数：判定结束时给胜者昵称 +1 并落库（每局仅此一次）。
+      const winner = res.state.winnerUid ? room.members.get(res.state.winnerUid) : undefined;
+      if (winner && winner.nickname.trim()) winner.wins = this.winStore.addWin(winner.nickname);
     }
     this.armTimer(room);
     this.broadcast(room);

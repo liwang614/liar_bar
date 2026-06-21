@@ -5,3 +5,7 @@ dist
 *.log
 .firebase
 .DS_Store
+data/
+*.db
+*.db-wal
+*.db-shm
