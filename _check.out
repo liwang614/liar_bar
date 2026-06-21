@@ -1,0 +1,29 @@
+== protocol ==
+RoomSummary_iface=1
+client_rooms_req=1
+server_rooms_msg=1
+== client ==
+lines=124
+RoomSummary_import=0
+onRooms_handler=0
+onMessage_rooms=0
+refreshRooms=0
+export_net=1
+== store ==
+lines=223
+RoomSummary_import=2
+rooms_field=1
+rooms_init=1
+onRooms_sub=1
+refreshRooms=3
+== home ==
+lines=97
+rooms_from_store=0
+enterRoom=0
+rooms_map=0
+refreshRooms_use=0
+== server ==
+broadcastLobby_calls=5
+onClose_def=1
+roomSummaries_def=1
+broadcastLobby_def=1
