@@ -63,9 +63,15 @@ export default function Game() {
   // 当前“行动者”：出牌阶段是 turnUid；翻牌阶段是 picker。
   const activeUid = round.phase === 'fate' && pf ? pf.pickerUid : round.turnUid;
 
-  const opponents = room.seatOrder.filter((u) => u !== uid).map((u) => room.players[u]);
-  const leftOpps = opponents.filter((_, i) => i % 2 === 0);
-  const rightOpps = opponents.filter((_, i) => i % 2 === 1);
+  // 从“我”的下家开始按座位（出牌）顺序排列对手，使高亮顺时针流动：
+  // 左列自下而上（下家在最底、紧挨“我”），接右列自上而下，最后回到“我”。
+  const myIdx = room.seatOrder.indexOf(uid);
+  const ordered = [...room.seatOrder.slice(myIdx + 1), ...room.seatOrder.slice(0, myIdx)].map(
+    (u) => room.players[u],
+  );
+  const mid = Math.ceil(ordered.length / 2);
+  const leftOpps = ordered.slice(0, mid).reverse();
+  const rightOpps = ordered.slice(mid);
   const theme = ANIMAL_NAME[round.themeAnimal];
   const turnPlayer = room.players[round.turnUid];
 
