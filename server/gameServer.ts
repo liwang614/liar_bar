@@ -392,6 +392,7 @@ export class GameHub {
                     judgedUid: r.pendingFate.judgedUid,
                     pickerUid: r.pendingFate.pickerUid,
                     remaining: room.state.players[r.pendingFate.judgedUid].fateDeck.length,
+                    flipsLeft: r.pendingFate.flipsLeft,
                   }
                 : null,
             }

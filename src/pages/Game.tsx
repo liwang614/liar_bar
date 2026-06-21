@@ -129,7 +129,8 @@ export default function Game() {
             ) : round.phase === 'fate' && pf ? (
               iPickFate ? (
                 <span className="text-amber-300">
-                  你来替 {room.players[pf.judgedUid]?.nickname} 翻一张命运牌！翻到 💥 他就输
+                  你来替 {room.players[pf.judgedUid]?.nickname} 翻命运牌！翻到 💥 他就输
+                  {pf.flipsLeft > 1 ? `（翻倍，还需翻 ${pf.flipsLeft} 张）` : ''}
                 </span>
               ) : pf.judgedUid === uid ? (
                 <span className="text-rose-300">等待对方翻你的命运牌…🙏 别炸</span>
@@ -194,7 +195,8 @@ export default function Game() {
         {iPickFate && pf ? (
           <div>
             <div className="mb-2 text-sm text-amber-300">
-              点一张翻开 {room.players[pf.judgedUid]?.nickname} 的命运牌：
+              点一张翻开 {room.players[pf.judgedUid]?.nickname} 的命运牌
+              {pf.flipsLeft > 1 ? `（翻倍！还需翻 ${pf.flipsLeft} 张）` : '：'}
             </div>
             <div className="flex flex-wrap gap-2">
               {Array.from({ length: pf.remaining }).map((_, i) => (
@@ -213,9 +215,16 @@ export default function Game() {
             <button
               onClick={() => send({ type: 'CHALLENGE' })}
               disabled={!canChallenge}
-              className="flex-1 rounded-lg bg-rose-600 py-3 font-semibold disabled:opacity-30"
+              className="flex-1 rounded-lg bg-rose-600 py-3 text-sm font-semibold disabled:opacity-30"
             >
-              质疑上家
+              质疑
+            </button>
+            <button
+              onClick={() => send({ type: 'DOUBLE_CHALLENGE' })}
+              disabled={!canChallenge}
+              className="flex-1 rounded-lg bg-orange-600 py-3 text-sm font-semibold disabled:opacity-30"
+            >
+              翻倍质疑
             </button>
             <button
               onClick={() => {
@@ -223,7 +232,7 @@ export default function Game() {
                 setSelected([]);
               }}
               disabled={!canPlay}
-              className="flex-1 rounded-lg bg-emerald-600 py-3 font-semibold disabled:opacity-30"
+              className="flex-1 rounded-lg bg-emerald-600 py-3 text-sm font-semibold disabled:opacity-30"
             >
               出牌 ({selected.length})
             </button>

@@ -22,11 +22,12 @@ export interface PublicLastPlay {
   playId: string;
 }
 
-// 待翻命运牌（由对方揭牌）。remaining = 被判定者剩余命运牌张数。
+// 待翻命运牌（由对方揭牌）。remaining = 被判定者剩余命运牌张数；flipsLeft = 本次还需翻几张（翻倍质疑为 2）。
 export interface PublicPendingFate {
   judgedUid: string;
   pickerUid: string;
   remaining: number;
+  flipsLeft: number;
 }
 
 export interface PublicRound {
@@ -70,6 +71,7 @@ export interface EventEnvelope {
 export type ActionMsg =
   | { type: 'PLAY_CARDS'; cardIds: string[] }
   | { type: 'CHALLENGE' }
+  | { type: 'DOUBLE_CHALLENGE' }
   | { type: 'PICK_FATE'; index: number }
   | { type: 'TIMEOUT' }
   | { type: 'FORFEIT' };

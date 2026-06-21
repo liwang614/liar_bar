@@ -27,7 +27,7 @@ describe('质疑与验证 (R-12, R-2)', () => {
     expect(reveal && 'judgedUid' in reveal && reveal.judgedUid).toBe('A');
     // 进入待翻阶段，由对方 B 翻 A 的命运牌。
     expect(res.state.round?.phase).toBe('fate');
-    expect(res.state.round?.pendingFate).toEqual({ judgedUid: 'A', pickerUid: 'B' });
+    expect(res.state.round?.pendingFate).toEqual({ judgedUid: 'A', pickerUid: 'B', flipsLeft: 1 });
     const res2 = pickFate(res.state, 0); // 翻到炸弹
     expect(res2.state.players.A.alive).toBe(false);
     expect(eventTypes(res2.events)).toContain('PLAYER_ELIMINATED');
@@ -49,7 +49,7 @@ describe('质疑与验证 (R-12, R-2)', () => {
     expect(reveal && 'liar' in reveal && reveal.liar).toBe(false);
     expect(reveal && 'judgedUid' in reveal && reveal.judgedUid).toBe('B');
     // 全真 → 质疑者 B 被判定，由对方 A 翻 B 的命运牌。
-    expect(res.state.round?.pendingFate).toEqual({ judgedUid: 'B', pickerUid: 'A' });
+    expect(res.state.round?.pendingFate).toEqual({ judgedUid: 'B', pickerUid: 'A', flipsLeft: 1 });
     const res2 = pickFate(res.state, 0);
     expect(res2.state.players.B.alive).toBe(false);
   });

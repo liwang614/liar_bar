@@ -10,7 +10,7 @@ import {
   nextAliveAfter,
 } from './helpers';
 import { createRng, type Rng } from './rng';
-import type { Action, Card, GameEvent, GameState, ReduceResult } from './types';
+import type { Action, Card, FateCard, GameEvent, GameState, ReduceResult } from './types';
 
 const { MIN_PLAY, MAX_PLAY, TIMEOUT_STRIKES_TO_KICK } = GAME_CONFIG;
 
@@ -67,7 +67,11 @@ export function reduce(inState: GameState, action: Action, rng: Rng): ReduceResu
     }
     case 'CHALLENGE': {
       if (!round.lastPlay) return reject('没有可质疑的对象'); // R-9
-      return applyChallenge(s, action.uid, rng, events);
+      return applyChallenge(s, action.uid, rng, events, 1);
+    }
+    case 'DOUBLE_CHALLENGE': {
+      if (!round.lastPlay) return reject('没有可质疑的对象'); // R-9
+      return applyChallenge(s, action.uid, rng, events, 2); // 翻倍：判负方翻 2 张
     }
     case 'TIMEOUT': {
       return applyTimeout(s, action.uid, rng, events);
@@ -110,11 +114,17 @@ function applyPlay(s: GameState, uid: string, played: Card[], rng: Rng, events: 
   return advanceTurn(s, uid, rng, events);
 }
 
-// 质疑（R-12）。
-function applyChallenge(s: GameState, uid: string, rng: Rng, events: GameEvent[]): ReduceResult {
+// 质疑（R-12）。flips=1 普通质疑，flips=2 翻倍质疑（判负方翻 2 张命运牌）。
+function applyChallenge(
+  s: GameState,
+  uid: string,
+  rng: Rng,
+  events: GameEvent[],
+  flips: number,
+): ReduceResult {
   const round = s.round!;
   const lp = round.lastPlay!;
-  events.push({ type: 'CHALLENGE_DECLARED', challengerUid: uid, targetUid: lp.uid });
+  events.push({ type: 'CHALLENGE_DECLARED', challengerUid: uid, targetUid: lp.uid, double: flips > 1 });
 
   const liar = handIsLie(lp.cards, round.themeAnimal);
   const judgedUid = liar ? lp.uid : uid; // 说谎→出牌者判定；全真→质疑者判定
@@ -128,7 +138,7 @@ function applyChallenge(s: GameState, uid: string, rng: Rng, events: GameEvent[]
     forced: false,
   });
   round.lastPlay = null;
-  return enterFatePhase(s, judgedUid, pickerUid, rng, events);
+  return enterFatePhase(s, judgedUid, pickerUid, rng, events, flips);
 }
 
 // 超时（文档 §5.1）：等价自动随机出 1 张、不质疑；连续 N 次按 FORFEIT 出局。
@@ -167,35 +177,29 @@ function applyForfeit(s: GameState, uid: string, rng: Rng, events: GameEvent[]):
 }
 
 // 进入待翻阶段（R-13 改）：判定已定，等对方 pickerUid 翻 judgedUid 的命运牌。
-// 无合法对方（极端）→ 退化为随机翻。
+// flips：需翻开的张数（普通质疑 1，翻倍质疑 2）。无合法对方（极端）→ 退化为随机翻。
 function enterFatePhase(
   s: GameState,
   judgedUid: string,
   pickerUid: string,
   rng: Rng,
   events: GameEvent[],
+  flips = 1,
 ): ReduceResult {
   const judged = s.players[judgedUid];
   if (!pickerUid || !s.players[pickerUid]?.alive) {
-    const idx = judged.fateDeck.length > 0 ? rng.pickIndex(judged.fateDeck.length) : 0;
-    return resolveFateAt(s, judgedUid, idx, rng, events);
+    return autoResolveFate(s, judgedUid, flips, rng, events);
   }
   const round = s.round!;
   round.phase = 'fate';
-  round.pendingFate = { judgedUid, pickerUid };
-  events.push({ type: 'FATE_PENDING', judgedUid, pickerUid, remaining: judged.fateDeck.length });
+  round.pendingFate = { judgedUid, pickerUid, flipsLeft: flips };
+  events.push({ type: 'FATE_PENDING', judgedUid, pickerUid, remaining: judged.fateDeck.length, flipsLeft: flips });
   s.rng = rng.getState();
   return { state: s, events };
 }
 
-// 翻开 judgedUid 命运牌的第 index 张（由对方选定的位置）并移出。
-function resolveFateAt(
-  s: GameState,
-  judgedUid: string,
-  index: number,
-  rng: Rng,
-  events: GameEvent[],
-): ReduceResult {
+// 翻开 judgedUid 命运牌第 index 张并结算其本身（安全→移出，炸弹→出局）。返回该牌，不收束小局。
+function flipOne(s: GameState, judgedUid: string, index: number, events: GameEvent[]): FateCard {
   const p = s.players[judgedUid];
   const card = p.fateDeck.splice(index, 1)[0];
   const remaining = p.fateDeck.length;
@@ -207,7 +211,56 @@ function resolveFateAt(
     p.hand = [];
     events.push({ type: 'PLAYER_ELIMINATED', uid: judgedUid, reason: 'bomb' });
   }
+  return card;
+}
+
+// 对方翻开第 index 张（PICK_FATE）。翻倍时若翻到安全且还有次数，则留在 fate 阶段继续翻下一张。
+function resolveFateAt(
+  s: GameState,
+  judgedUid: string,
+  index: number,
+  rng: Rng,
+  events: GameEvent[],
+): ReduceResult {
+  const pf = s.round?.pendingFate;
+  const card = flipOne(s, judgedUid, index, events);
+  const p = s.players[judgedUid];
+  const flipsLeft = (pf?.flipsLeft ?? 1) - 1;
+
+  // 还需翻、被翻者仍存活、还有命运牌、对方仍在 → 继续由对方翻下一张。
+  if (card === 'safe' && flipsLeft > 0 && p.fateDeck.length > 0 && pf && s.players[pf.pickerUid]?.alive) {
+    s.round!.pendingFate = { judgedUid, pickerUid: pf.pickerUid, flipsLeft };
+    events.push({
+      type: 'FATE_PENDING',
+      judgedUid,
+      pickerUid: pf.pickerUid,
+      remaining: p.fateDeck.length,
+      flipsLeft,
+    });
+    s.rng = rng.getState();
+    return { state: s, events };
+  }
+
   s.lastJudgedUid = judgedUid; // R-7 下小局首家依据
+  if (s.round) s.round.pendingFate = null;
+  return concludeRound(s, rng, events, 'judged');
+}
+
+// 无合法对方时由系统随机翻 flips 张（翻到炸弹或翻空即止），再收束小局。
+function autoResolveFate(
+  s: GameState,
+  judgedUid: string,
+  flips: number,
+  rng: Rng,
+  events: GameEvent[],
+): ReduceResult {
+  const p = s.players[judgedUid];
+  for (let i = 0; i < flips; i++) {
+    if (!p.alive || p.fateDeck.length === 0) break;
+    const card = flipOne(s, judgedUid, rng.pickIndex(p.fateDeck.length), events);
+    if (card === 'bomb') break;
+  }
+  s.lastJudgedUid = judgedUid;
   if (s.round) s.round.pendingFate = null;
   return concludeRound(s, rng, events, 'judged');
 }

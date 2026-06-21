@@ -25,7 +25,9 @@ export function eventText(e: EventLike, room: PublicRoom | null): string {
     case 'CARDS_PLAYED':
       return `${name(p.uid)} 打出 ${p.count} 张牌`;
     case 'CHALLENGE_DECLARED':
-      return `${name(p.challengerUid)} 质疑了 ${name(p.targetUid)}！`;
+      return p.double
+        ? `${name(p.challengerUid)} 翻倍质疑 ${name(p.targetUid)}！（翻 2 张）`
+        : `${name(p.challengerUid)} 质疑了 ${name(p.targetUid)}！`;
     case 'CARDS_REVEALED':
       return p.forced
         ? `强制翻验 ${name(p.playerUid)}：${cardStr(p.cards)} → ${p.liar ? '有假！' : '全真'}`

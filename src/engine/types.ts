@@ -37,10 +37,12 @@ export interface LastPlay {
 
 export type RoundPhase = 'turn' | 'revealing' | 'fate' | 'round_end';
 
-// 待翻命运牌：判定已确定由 judgedUid 受罚，等 pickerUid（对方）选一张翻开。
+// 待翻命运牌：判定已确定由 judgedUid 受罚，等 pickerUid（对方）选牌翻开。
+// flipsLeft：本次受罚还需翻开的命运牌张数（普通质疑 1，翻倍质疑 2）。
 export interface PendingFate {
   judgedUid: string;
   pickerUid: string;
+  flipsLeft: number;
 }
 
 export interface RoundState {
@@ -70,6 +72,7 @@ export interface GameState {
 export type Action =
   | { type: 'PLAY_CARDS'; uid: string; cardIds: string[] }
   | { type: 'CHALLENGE'; uid: string }
+  | { type: 'DOUBLE_CHALLENGE'; uid: string } // 翻倍质疑：判负方翻 2 张命运牌
   | { type: 'PICK_FATE'; uid: string; index: number } // 对方翻命运牌
   | { type: 'TIMEOUT'; uid: string }
   | { type: 'FORFEIT'; uid: string };
@@ -80,7 +83,7 @@ export type GameEvent =
   | { type: 'ROUND_STARTED'; roundNo: number; turnUid: string }
   | { type: 'THEME_ANNOUNCED'; themeAnimal: Animal }
   | { type: 'CARDS_PLAYED'; uid: string; count: number; playId: string }
-  | { type: 'CHALLENGE_DECLARED'; challengerUid: string; targetUid: string }
+  | { type: 'CHALLENGE_DECLARED'; challengerUid: string; targetUid: string; double?: boolean }
   | {
       type: 'CARDS_REVEALED';
       cards: Card[];
@@ -89,7 +92,7 @@ export type GameEvent =
       judgedUid: string; // 执行死亡判定者
       forced: boolean; // 是否为 R-15 强制验证触发
     }
-  | { type: 'FATE_PENDING'; judgedUid: string; pickerUid: string; remaining: number }
+  | { type: 'FATE_PENDING'; judgedUid: string; pickerUid: string; remaining: number; flipsLeft?: number }
   | { type: 'FATE_DRAWN'; uid: string; card: FateCard; remaining: number }
   | { type: 'PLAYER_ELIMINATED'; uid: string; reason: 'bomb' | 'forfeit' }
   | { type: 'ROUND_ENDED'; roundNo: number; reason: 'judged' | 'all_empty' }

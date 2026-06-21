@@ -69,7 +69,7 @@ describe('出牌与轮转 (R-8, R-10, R-11)', () => {
     });
     const res = applyAction(challengeable, { type: 'CHALLENGE', uid: 'C' });
     expect(res.rejected).toBeUndefined();
-    expect(res.state.round?.pendingFate).toEqual({ judgedUid: 'B', pickerUid: 'C' });
+    expect(res.state.round?.pendingFate).toEqual({ judgedUid: 'B', pickerUid: 'C', flipsLeft: 1 });
     const res2 = pickFate(res.state, 0); // C 翻 B 的命运牌 → 炸弹
     expect(res2.state.players.B.alive).toBe(false);
   });
